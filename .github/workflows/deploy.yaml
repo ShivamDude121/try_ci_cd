@@ -27,4 +27,17 @@ jobs:
 
       - name: varify pushed image
         run: docker pull shivamrock887466/myapp:latest
-  
+
+
+      - name: Deploy to Ec2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+
+          scripts: |
+           sudo docker pull shivamrock887466/myapp:latest
+           sudo docker stop myapp || true
+           sudo docker rm myapp || true
+           sudo docker run -d --name myapp -p 3000:3000 shivamrock887466/myapp:latest
