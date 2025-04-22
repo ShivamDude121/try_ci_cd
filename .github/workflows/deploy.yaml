@@ -1,4 +1,5 @@
-name : on push
+name: Deploy on Push
+
 on:
   push:
     branches:
@@ -7,37 +8,44 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: log in to docker registry
-        uses: docker/login-action@v1
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
-         username: ${{ secrets.DOCKER_USERNAME }}
-         password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v2
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
           push: true
           tags: shivamrock887466/myapp:latest
 
-      - name: varify pushed image
+      - name: Verify pushed image
         run: docker pull shivamrock887466/myapp:latest
 
+      - name: Decode SSH Key
+        run: |
+          echo "$SSH_KEY" | base64 -d > id_rsa
+          chmod 600 id_rsa
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to Ec2
-        uses: appleboy/scp-action@master
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-
-          scripts: |
-           sudo docker pull shivamrock887466/myapp:latest
-           sudo docker stop myapp || true
-           sudo docker rm myapp || true
-           sudo docker run -d --name myapp -p 3000:3000 shivamrock887466/myapp:latest
+          port: 22
+          script: |
+             sudo docker pull shivamrock887466/myapp:latest
+             sudo docker stop myapp || true
+             sudo docker rm myapp || true
+             sudo docker run -d --name myapp -p 3000:3000 shivamrock887466/myapp:latest
