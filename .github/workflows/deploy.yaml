@@ -37,15 +37,24 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to EC2 via SSH
+
+      - name: Read private key content into ENV
+        id: load_key
+        run: |
+            echo "::set-output name=private_key::$(cat id_rsa)"
+  
+      - name: SSH using decoded id_rsa content
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ steps.load_key.outputs.private_key }}
           port: 22
           script: |
-             sudo docker pull shivamrock887466/myapp:latest
-             sudo docker stop myapp || true
-             sudo docker rm myapp || true
-             sudo docker run -d --name myapp -p 3000:3000 shivamrock887466/myapp:latest
+           sudo docker pull shivamrock887466/myapp:latest
+           sudo docker stop myapp || true
+           sudo docker rm myapp || true
+           sudo docker run -d --name myapp -p 3000:3000 shivamrock887466/myapp:latest
+           
+          
+      
