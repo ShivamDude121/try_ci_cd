@@ -30,31 +30,24 @@ jobs:
       - name: Verify pushed image
         run: docker pull shivamrock887466/myapp:latest
 
-      - name: Decode SSH Key
-        run: |
-          echo "$SSH_KEY" | base64 -d > id_rsa
-          chmod 600 id_rsa
-        env:
-          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
 
 
-      - name: Read private key content into ENV
-        id: load_key
+
+
+      - name: Configure SSH
         run: |
-            echo "::set-output name=private_key::$(cat id_rsa)"
-  
-      - name: SSH using decoded id_rsa content
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ steps.load_key.outputs.private_key }}
-          port: 22
-          script: |
-           sudo docker pull shivamrock887466/myapp:latest
-           sudo docker stop myapp || true
-           sudo docker rm myapp || true
-           sudo docker run -d --name myapp -p 3000:3000 shivamrock887466/myapp:latest
-           
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/private.key
+          chmod 600 ~/.ssh/private.key
           
+      - name: Connect and Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/private.key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} '
+           sudo docker pull shivamrock887466/myapp:latest &&
+           sudo docker stop myapp || true &&
+           sudo docker rm myapp || true &&
+           sudo docker run -d --name myapp -p 3000:3000 shivamrock887466/myapp:latest
+          '
+
+
       
